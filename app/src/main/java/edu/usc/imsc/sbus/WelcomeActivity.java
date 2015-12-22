@@ -93,6 +93,11 @@ public class WelcomeActivity extends Activity implements DataRequestListener {
         finish();
     }
 
+    @Override
+    public void HubsResponse(List<Hub> hub, List<Stop> stops){
+        startActivity(new Intent(WelcomeActivity.this, MainActivity.class));
+        finish();
+    }
     public void setProgressMax(int max) {
         mProgress.setMax(max);
     }

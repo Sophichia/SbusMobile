@@ -55,7 +55,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-public class MainActivity extends ActionBarActivity implements LocationListener, DataRequestListener, MapClickListener {
+public class MainActivity extends ActionBarActivity implements LocationListener, DataRequestListener, MapClickListener, MapListener{
 
     private Location mLocation;
 
@@ -66,6 +66,8 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
     private VehicleOverlay mVehicleOverlay;
     private StopsOverlay mStopsOverlay;
     private StopsOverlay mActiveStopsOverlay;
+    private HubOverlay mHubOverlay;
+    private HubOverlay mActiveHubOverlay;
     private ItemizedIconOverlay mLocationOverlay;
     private OverlayItem mLocationItem;
     private Polyline mVehiclePath;
@@ -76,12 +78,17 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
     private TextView stopTime;
     private TextView vehicleDelay;
     private TextView loadingVehiclesText;
-    private ImageButton vehicleInfoClose;
+
 
     private View stopInfoBox;
+    private View hubInfoBox;
     private TextView selectedStopName;
     private TextView selectedStopTime;
+    private TextView selectedHubId;
+    private TextView selectedHubStopNumber;
     private ImageButton stopInfoClose;
+    private ImageButton vehicleInfoClose;
+    private ImageButton hubInfoClose;
 
     private TableRow rowChangeLocation;
     private Button changeLocationButton;
@@ -91,16 +98,22 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
     //    private boolean bDefaultZoom = true;
     private int mZoomLevel = 16;
     private int mStopsFilterDistance; // units in meters
+    private int mHubFilterDistance;
     private GeoPoint mFilterLocation = null;
 
     private List<Vehicle> mVehicles;
+    private List<Stop> mStops;
+    private List<Hub> mHubs;
     private SharedPreferences mSharedPreferences;
     private ProgressDialog mProgressLocation;
 
     private boolean mShowingActiveStops = false;
+    private boolean mShowingActiveHubs = false;
     private MapThread mapThread;
 
     private long mLastLocationUpdateTime;
+
+    private Hub currentHub;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,9 +126,8 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
         mapThread = new MapThread(this);
 
         mLastLocationUpdateTime = Calendar.getInstance().getTimeInMillis();
-
-        mStopsFilterDistance = mSharedPreferences.getInt("stopRange", 1000);
-
+        mStopsFilterDistance = mSharedPreferences.getInt("stopRange", 16000);
+        mHubFilterDistance = mSharedPreferences.getInt("stopRange", 16000);
         loadingVehiclesText = (TextView) findViewById(R.id.text_loading_vehicles);
 
         /* Initialize the map */
@@ -127,7 +139,7 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
 
         /* Enable Zoom Controls */
         mMap.setMultiTouchControls(true);
-        mMap.setMinZoomLevel(12);
+        mMap.setMinZoomLevel(14);
         mMap.setMaxZoomLevel(17);
 
         /* Set a Default Map Point */
@@ -144,9 +156,13 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
         mVehicleOverlay = new VehicleOverlay(this, this);
         mMap.getOverlays().add(mVehicleOverlay.getOverlay());
 
+        //Create and add Hub Overly
+        mHubOverlay = new HubOverlay(this, this, HubOverlay.Type.Normal);
+        mActiveHubOverlay = new HubOverlay(this, this, HubOverlay.Type.Active);
+        mMap.getOverlays().add(mHubOverlay.getOverlay());
+        mMap.getOverlays().add(mActiveHubOverlay.getOverlay());
 
         // Create Location Overlay
-
         mLocationItem = new OverlayItem("Location", "Location", new GeoPoint(34.0205, -118.2856));
         mLocationItem.setMarker(getResources().getDrawable(R.drawable.ic_action_location_found));
         List<OverlayItem> singleLocationItemList = new ArrayList<>();
@@ -175,6 +191,8 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
         vehicleName = (TextView) findViewById(R.id.vehicle_name);
         stopName = (TextView) findViewById(R.id.stop_name);
         stopTime = (TextView) findViewById(R.id.stop_time);
+
+
         vehicleDelay = (TextView) findViewById(R.id.delay);
         vehicleInfoClose = (ImageButton) findViewById(R.id.vehicle_info_close);
 
@@ -184,10 +202,18 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
         selectedStopTime = (TextView) findViewById(R.id.selected_stop_time);
         stopInfoClose = (ImageButton) findViewById(R.id.stop_info_close);
 
+        hubInfoBox = findViewById(R.id.hub_info);
+        hubInfoBox.setVisibility(View.GONE);
+        selectedHubId = (TextView) findViewById(R.id.selected_hub_name);
+        selectedHubStopNumber = (TextView) findViewById(R.id.selected_hub_info);
+        hubInfoClose = (ImageButton) findViewById(R.id.hub_info_close);
+
         rowChangeLocation = (TableRow) findViewById(R.id.row_change_location);
         changeLocationButton = (Button) findViewById(R.id.changeLocation);
         mapCenterImage = (ImageView) findViewById(R.id.mapCenter);
         locationCancelButton = (ImageButton) findViewById(R.id.locationCancel);
+
+
 
         /* Button Click Handling */
 
@@ -206,7 +232,7 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
                 if (mShowingActiveStops) {
                     resetStopInfoBox();
                 }
-
+                displayHubInfo(currentHub.id, String.valueOf(currentHub.stopNumber));
                 mapThread.stopThread();                // Stop trying to display the vehicles on the map
                 mMap.invalidate();                     // Update the map
             }
@@ -225,8 +251,22 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
                     mapThread.stopThread();                // Stop trying to display the vehicles on the map
                 }
                 resetStopInfoBox();
+                displayHubInfo(currentHub.id, String.valueOf(currentHub.stopNumber));
 
                 mMap.invalidate();
+            }
+        });
+
+        hubInfoClose.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v){
+                mShowingActiveHubs = false;
+                mStopsOverlay.clearItems();
+                mHubOverlay.showAllItems();
+                mHubOverlay.removeActiveItem();
+                resetHubInfoBox();
+                mMap.invalidate();
+                HubsResponse(mHubs,mStops);
             }
         });
 
@@ -248,6 +288,46 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
             }
         });
 
+        /**
+         * this listener is used to let the hub changed when tha map moved.
+         * Created by Mengjia on 15/12/21.
+         */
+        mMap.setMapListener(new MapListener() {
+            @Override
+            public boolean onScroll(ScrollEvent scrollEvent) {
+                //if no infoBoxes opened then show the hubs for current location
+                if(!vehicleInfoBox.isShown()&&!stopInfoBox.isShown()&&!hubInfoBox.isShown()){
+                    GeoPoint currentLocation = (GeoPoint)mMap.getMapCenter();
+                    //Log.d("Scroll test","now position is " + currentLocation.getLatitude() +" "+ currentLocation.getLongitude());
+                    mFilterLocation = currentLocation;
+                    if(mHubs!=null&&mStops!=null){
+                        mActiveHubOverlay.clearItems();
+                        mHubOverlay.clearItems();       //clear hubs before
+                        HubsResponse(mHubs,mStops);
+                    }
+
+                }
+                return false;
+            }
+
+            @Override
+            public boolean onZoom(ZoomEvent zoomEvent) {
+                if(!vehicleInfoBox.isShown()&&!stopInfoBox.isShown()&&!hubInfoBox.isShown()){
+                    if(mHubs!=null&&mStops!=null){
+                        if(mMap.getZoomLevel()>=15){
+                            mActiveHubOverlay.clearItems();
+                            mHubOverlay.clearItems();       //clear hubs before
+                            HubsResponse(mHubs,mStops);
+                        }
+                        else{// for zoom level less than 15, we choose not to show the hub because it is too dense
+                            mHubOverlay.clearItems();
+                        }
+
+                    }
+                }
+                return false;
+            }
+        });
 //        mMap.setMapListener(new MapListener() {
 //            @Override
 //            public boolean onScroll(ScrollEvent scrollEvent) {
@@ -488,17 +568,43 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
     @Override
     public void StopsResponse(List<Stop> stops) {
         // filter stops based on location
-        GeoPoint g = (mFilterLocation != null) ? mFilterLocation : new GeoPoint(mLocation);
-        List<Stop> nearbyStops = filterNearbyStops(stops, g);
+        //GeoPoint g = (mFilterLocation != null) ? mFilterLocation : new GeoPoint(mLocation);
+        //List<Stop> nearbyStops = filterStopsBelongHub(stops, mActiveHubOverlay.getActiveItem().);
 
         // create overlay items
         List<OverlayItem> stopOverlayItems = new ArrayList<>();
-        for (Stop s : nearbyStops) {
+        for (Stop s : stops) {
             stopOverlayItems.add(new StopOverlayItem(s));
         }
 
         // add all overlay items
         mStopsOverlay.addItems(stopOverlayItems);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                loadingVehiclesText.setVisibility(View.INVISIBLE);
+                mMap.invalidate();
+            }
+        });
+    }
+
+    @Override
+    public void HubsResponse(List<Hub> hubs, List<Stop> stops) {
+        //filter hubs based on location
+        mStops = stops;
+        // Log.d("stop test ","stops in HubsResponse is " + mStops.size());
+        mHubs = hubs;
+        GeoPoint g = (mFilterLocation !=null) ? mFilterLocation: new GeoPoint(mLocation);
+        List<Hub> nearbyHubs = filterNearbyHubs(hubs,g);
+
+        //create overlay items
+        List<OverlayItem> hubOverlayItems = new ArrayList<>();
+        for(Hub h : nearbyHubs){
+            hubOverlayItems.add(new HubOverlayItem(h));
+        }
+
+        //add all overlay items
+        mHubOverlay.addItems(hubOverlayItems);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -517,7 +623,7 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
                 Collections.sort(v.stops, new StopSequenceComparator());
             }
 
-            // This will update the busses every 5 seconds
+            // This will update the buses every 5 seconds
 
             mapThread = new MapThread(MainActivity.this);
             mapThread.start();
@@ -606,6 +712,7 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
 
         resetVehicleInfoBox();              // Hide details for previously selected vehicle
         resetStopInfoBox();
+        resetHubInfoBox();
         removeActiveStops();                // Remove Active Stops
 //        mStopsOverlay.hideAllItems();       // Temporarily hide all stops on the map
         // Show the details for the selected vehicle
@@ -631,14 +738,51 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
 //            mStopsOverlay.hideAllItems();       // Temporarily hide all stops on the map
             mStopsOverlay.hideItemsExceptActive();
         }
-
+        resetHubInfoBox();
         resetStopInfoBox();                     // Hide details for the previously selected stop
         displayStopInfo(s.name, s.arrivalTime); // Show information for the selected stop
         mMap.invalidate();
     }
 
     @Override
+    public void onHubClick(Hub h){
+        if(!mShowingActiveHubs){                 //If clicking on a normal hub
+            currentHub = h;
+            mShowingActiveHubs = true;           //mark true
+            mVehicleOverlay.clearItems();       //Hide all vehicles on the map
+            mMap.getOverlays().remove(mVehiclePath);//Hide the active vehicle route
+            resetVehicleInfoBox();                //Hide details for the previously selected vehicle
+            mHubOverlay.clearItems();
+            //show the stops belong to this hub
+            List<Stop> nearbyStops = filterStopsBelongHub(mStops, h);
+            currentHub.stopNumber = nearbyStops.size();
+            displayHubInfo(h.id,String.valueOf(h.stopNumber));
+            StopsResponse(nearbyStops);
+        }
+        else{
+            currentHub = null;
+            mShowingActiveHubs = false;
+            mStopsOverlay.clearItems();       //hide all the stop
+            mHubOverlay.showAllItems();
+
+
+        }
+        mMap.invalidate();
+    }
+
+    @Override
     public void onEmptyClick() {
+    }
+
+    @Override
+    public boolean onScroll(ScrollEvent event){
+        Log.d("scroll test", "the map has moved");
+        return true;
+    }
+
+    @Override
+    public boolean onZoom(ZoomEvent event){
+        return true;
     }
 
     /****************************************************************************
@@ -682,6 +826,39 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
         }
     }
 
+    //find stops which belong to the hub
+    public List<Stop> filterStopsBelongHub(List<Stop> stops, Hub h){
+        List<Stop> belongToThisHub = new ArrayList<>();
+        for(Stop s :stops){
+            if(s.hubId.equals(h.id)){
+                belongToThisHub.add(s);
+            }
+        }
+        return belongToThisHub;
+    }
+    public List<Hub> filterNearbyHubs(List<Hub> hubs, GeoPoint g){
+        List<Hub> nearbyHubs = new ArrayList<>();
+        for(Hub h : hubs){
+            if(hubIsWithinXMiles(h, mHubFilterDistance/mMap.getZoomLevel(), g)){
+                nearbyHubs.add(h);
+            }
+        }
+        return nearbyHubs;
+    }
+
+    boolean hubIsWithinXMiles(Hub h, int x, GeoPoint g){
+        GeoPoint hubLocation = new GeoPoint(h.latitude, h.longitude);
+
+        if(hubLocation != null && g !=null){
+            if(g.distanceTo(hubLocation) < x){
+                return true;
+            }
+            else
+                return false;
+        }
+        else
+            return true;
+    }
     private void resetVehicleInfoBox() {
         vehicleInfoBox.setVisibility(View.GONE);
         vehicleName.setText("Vehicle Name");
@@ -707,6 +884,18 @@ public class MainActivity extends ActionBarActivity implements LocationListener,
         selectedStopName.setText(name);
         selectedStopTime.setText(arrivalTime);
         stopInfoBox.setVisibility(View.VISIBLE);
+    }
+
+    private void resetHubInfoBox(){
+        hubInfoBox.setVisibility(View.GONE);
+        selectedHubId.setText("Hub Id");
+        selectedHubStopNumber.setText("Stop Number");
+    }
+
+    private void displayHubInfo(String hubId, String stopNumber){
+        selectedHubId.setText("Hub "+ hubId + " has ");
+        selectedHubStopNumber.setText(stopNumber + " Stops");
+        hubInfoBox.setVisibility(View.VISIBLE);
     }
 
     private void removeActiveStops() {

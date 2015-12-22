@@ -11,4 +11,6 @@ public interface MapClickListener {
     void onStopClick(Stop s);
 
     void onEmptyClick();
+
+    void onHubClick(Hub h);
 }

@@ -36,6 +36,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@+id/vehicle_info" />
+    <include
+        android:id="@+id/hub_info"
+        layout="@layout/hub_info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/stop_info"/>
 
     <include
         android:id="@+id/vehicle_info"

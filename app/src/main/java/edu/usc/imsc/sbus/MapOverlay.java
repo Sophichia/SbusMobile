@@ -46,6 +46,9 @@ public abstract class MapOverlay {
         mActiveItem = null;
     }
 
+    public void hideAllItems(){
+
+    }
     public void clearItems() {
         mItems.clear();
         mOverlay.removeAllItems();

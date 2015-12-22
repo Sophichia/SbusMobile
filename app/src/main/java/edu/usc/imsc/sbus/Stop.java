@@ -18,12 +18,21 @@ public class Stop {
         this.longitude = longitude;
     }
 
+    public Stop(String id, String name, double latitude, double longitude, String hubId) {
+        this.id = id;
+        this.name = name;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.hubId = hubId;
+    }
+
     public String id;
     public String stopHeadsign;
     public int stopSequence;
     public String name;
     public double latitude;
     public double longitude;
+    public String hubId;
 
     public int sequence;
     public String arrivalTime;

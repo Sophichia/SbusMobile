@@ -19,4 +19,5 @@ public interface DataRequestListener {
     void RouteResponse(List<GeoPoint> waypoints);
 
     void StopsResponse(List<Stop> stops);
+    void HubsResponse(List<Hub> hubs, List<Stop> stops);
 }

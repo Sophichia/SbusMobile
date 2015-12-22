@@ -25,6 +25,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(DatabaseContract.SQL_CREATE_STOP_ENTRIES);
         db.execSQL(DatabaseContract.SQL_CREATE_VEHICLE_ENTRIES);
+        db.execSQL(DatabaseContract.SQL_CREATE_HUB_ENTRIES);
         db.execSQL(DatabaseContract.SQL_CREATE_CONNECTION_ENTRIES);
     }
 
@@ -33,6 +34,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         // This database is only a cache for online data, so its upgrade policy is
         // to simply to discard the data and start over
         db.execSQL(DatabaseContract.SQL_DELETE_STOP_ENTRIES);
+        db.execSQL(DatabaseContract.SQL_DELETE_HUB_ENTRIES);
         db.execSQL(DatabaseContract.SQL_DELETE_VEHICLE_ENTRIES);
         db.execSQL(DatabaseContract.SQL_DELETE_CONNECTION_ENTRIES);
         onCreate(db);
@@ -69,11 +71,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(DatabaseContract.DataStop.COLUMN_NAME_STOP_NAME, s.name);
         values.put(DatabaseContract.DataStop.COLUMN_NAME_LATITUDE, s.latitude);
         values.put(DatabaseContract.DataStop.COLUMN_NAME_LONGITUDE, s.longitude);
+        values.put(DatabaseContract.DataStop.COLUMN_NAME_HUB_ID, s.hubId);
 
         // Insert the new row, returning the primary key value for the new row
         return db.insert(DatabaseContract.DataStop.TABLE_NAME, "null", values);
     }
+    //    Added by Mengjia
+    public long insertHub(SQLiteDatabase db, Hub h) {
+        ContentValues values = new ContentValues();
+        values.put(DatabaseContract.DataHub.COLUMN_NAME_HUB_ID, h.id);
+        values.put(DatabaseContract.DataHub.COLUMN_NAME_LATITUDE, h.latitude);
+        values.put(DatabaseContract.DataHub.COLUNM_NAME_LONGITUDE, h.longitude);
 
+        return db.insert(DatabaseContract.DataHub.TABLE_NAME, "null", values);
+    }
     public long insertVehicle(Vehicle v) {
 //        Gets the data repository in write mode
         SQLiteDatabase db = this.getWritableDatabase();
@@ -106,8 +117,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**********************************************************************
-    *                  Helper Methods for Retrieving Data
-    ***********************************************************************/
+     *                  Helper Methods for Retrieving Data
+     ***********************************************************************/
 
     public Cursor retrieveAllStops() {
 //        Gets the data repository in read mode
@@ -119,11 +130,32 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 DatabaseContract.DataStop.COLUMN_NAME_STOP_ID,
                 DatabaseContract.DataStop.COLUMN_NAME_STOP_NAME,
                 DatabaseContract.DataStop.COLUMN_NAME_LATITUDE,
-                DatabaseContract.DataStop.COLUMN_NAME_LONGITUDE
+                DatabaseContract.DataStop.COLUMN_NAME_LONGITUDE,
+                DatabaseContract.DataStop.COLUMN_NAME_HUB_ID,
         };
 
         return db.query(
                 DatabaseContract.DataStop.TABLE_NAME,   // the table to query
+                projection,                             // the columns to return
+                null,                                   // the columns for the WHERE clause
+                null,                                   // the values for the WHERE clause
+                null,                                   // don't group the rows
+                null,                                   // don't filter by row group
+                null                                    // the sort order
+        );
+    }
+
+    public Cursor retrieveAllHubs(){
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String[] projection = {
+                DatabaseContract.DataHub.COLUMN_NAME_HUB_ID,
+                DatabaseContract.DataHub.COLUMN_NAME_LATITUDE,
+                DatabaseContract.DataHub.COLUNM_NAME_LONGITUDE
+        };
+
+        return db.query(
+                DatabaseContract.DataHub.TABLE_NAME,   // the table to query
                 projection,                             // the columns to return
                 null,                                   // the columns for the WHERE clause
                 null,                                   // the values for the WHERE clause

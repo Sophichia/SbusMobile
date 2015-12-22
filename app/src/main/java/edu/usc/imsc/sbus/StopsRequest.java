@@ -9,6 +9,7 @@ import android.util.Log;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -48,7 +49,7 @@ public class StopsRequest {
     }
 
     /**
-     * GET ALL STOPS
+     * GET ALL STOPS AND THE HUBS
      * AJAX call to the API
      */
 
@@ -62,6 +63,22 @@ public class StopsRequest {
             // Local Stops Request
             if (mRequestType.equals(RequestType.Local)) {
                 DatabaseHelper dbh = new DatabaseHelper(mActivity);
+                //retrieve all hubs
+                Cursor cursorForHub = dbh.retrieveAllHubs();
+                List<Hub> hubs = new ArrayList<>();
+
+                if(cursorForHub.moveToFirst()){
+                    do{
+                        String id = cursorForHub.getString(cursorForHub.getColumnIndexOrThrow(DatabaseContract.DataHub.COLUMN_NAME_HUB_ID));
+                        double lat = cursorForHub.getDouble(cursorForHub.getColumnIndexOrThrow(DatabaseContract.DataHub.COLUMN_NAME_LATITUDE));
+                        double lon = cursorForHub.getDouble(cursorForHub.getColumnIndexOrThrow(DatabaseContract.DataHub.COLUNM_NAME_LONGITUDE));
+
+                        hubs.add(new Hub(id,lat,lon));
+                    } while (cursorForHub.moveToNext());
+                }
+                cursorForHub.close();
+                //  mListener.HubsResponse(hubs);
+
                 Cursor cursor = dbh.retrieveAllStops();
                 List<Stop> stops = new ArrayList<>();
 
@@ -71,14 +88,15 @@ public class StopsRequest {
                         String name = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseContract.DataStop.COLUMN_NAME_STOP_NAME));
                         double lat = cursor.getDouble(cursor.getColumnIndexOrThrow(DatabaseContract.DataStop.COLUMN_NAME_LATITUDE));
                         double lon = cursor.getDouble(cursor.getColumnIndexOrThrow(DatabaseContract.DataStop.COLUMN_NAME_LONGITUDE));
-
-                        stops.add(new Stop(id, name, lat, lon));
+                        String hubId = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseContract.DataStop.COLUMN_NAME_HUB_ID));
+                        stops.add(new Stop(id, name, lat, lon, hubId));
                     } while (cursor.moveToNext());
                 }
-
                 cursor.close();
+                dbh.close();
+                //mListener.StopsResponse(stops);
+                mListener.HubsResponse(hubs,stops);
 
-                mListener.StopsResponse(stops);
 
                 // Server Stops Request
             } else if (mRequestType.equals(RequestType.Server)) {
@@ -102,10 +120,61 @@ public class StopsRequest {
                     JSONObject messageObject = jsonObject.getJSONObject("message");
                     int pageCount = messageObject.getInt("number_of_pages");
 
+                    //download hub information, added by Mengjia
+                    HttpGet httpGetHubCount = new HttpGet(ServerStatics.HOST + ServerStatics.HUBS_COUNT);
+                    HttpResponse countHubExecute  = client.execute(httpGetHubCount);
+                    InputStream countHubContent = countHubExecute.getEntity().getContent();
+
+                    BufferedReader countHubReader = new BufferedReader(new InputStreamReader(countHubContent));
+                    StringBuilder countHubStringBuilder = new StringBuilder();
+
+                    String countHubInputStr;
+                    while((countHubInputStr = countHubReader.readLine())!= null)
+                        countHubStringBuilder.append(countHubInputStr);
+
+                    JSONObject jsonObjectCountHub = new JSONObject(countHubStringBuilder.toString());
+                    JSONObject countHubMessageObject = jsonObjectCountHub.getJSONObject("message");
+                    int hubPageCount = countHubMessageObject.getInt("number_of_pages");
+
 //                    Log.d(LOG_TAG, "Stops Pages: " + String.valueOf(pageCount));
-                    if (mProgressUpdate) ((WelcomeActivity) mActivity).setProgressMax(pageCount);
+                    if (mProgressUpdate) ((WelcomeActivity) mActivity).setProgressMax(pageCount+hubPageCount);
+
+                    /* For each page of hubs, load the hub. Added by Mengjia*/
+                    DatabaseHelper dbh = new DatabaseHelper((mActivity));
+                    SQLiteDatabase db = dbh.beginWriting();
+                    for (int i = 1; i <= hubPageCount; i++){
+                        HttpGet httpGetHubsPage = new HttpGet(ServerStatics.HOST + ServerStatics.HUBS_PAGE + String.valueOf(i));
+                        HttpResponse executeHub = client.execute(httpGetHubsPage);
+                        InputStream contentHub = executeHub.getEntity().getContent();
+
+                        if (mProgressUpdate) {
+                            ((WelcomeActivity) mActivity).setProgressCurrent(i);
+//                            Log.d(LOG_TAG, "updating progress");
+                        }
+                        BufferedReader hubContentReader = new BufferedReader(new InputStreamReader(contentHub));
+                        StringBuilder hubContentStringBuilder = new StringBuilder();
+                        String hubContentInputStr;
+                        while((hubContentInputStr = hubContentReader.readLine()) != null)
+                            hubContentStringBuilder.append(hubContentInputStr);
+
+                        JSONObject hubJsonObject = new JSONObject(hubContentStringBuilder.toString());
+                        JSONArray hubArray = hubJsonObject.getJSONArray("message");
+
+                        for(int j = 0; j<hubArray.length(); j++){
+                            JSONArray tmpHub = hubArray.getJSONArray(j);
+                            Object hubId = tmpHub.get(0);
+                            Object hubLat = tmpHub.get(1);
+                            Object hubLon = tmpHub.get(2);
+                            // Log.d("Hub Test", "hub Number is "+ j);
+                            Hub h = new Hub(hubId.toString(),Double.valueOf(hubLat.toString()),Double.valueOf(hubLon.toString()));
+                            dbh.insertHub(db,h);
+                        }
+
+
+                    }
 
                     /* For each page of stops, load the stops */
+                    //the original regex is wrong and when I modify it, it still will lose some information, so I changed it to JSON analysis. Mengjia
                     for (int i = 1; i <= pageCount; i++) {
 
 //                        Log.d(LOG_TAG, "Reading page " + String.valueOf(i) + " of stops");
@@ -114,45 +183,48 @@ public class StopsRequest {
                         HttpResponse execute = client.execute(httpGetStopsPage);
                         InputStream content = execute.getEntity().getContent();
 
-                        DataInputStream data = new DataInputStream(content);
+                        //DataInputStream data = new DataInputStream(content);
 
                         // Create database helper to enter data
-                        DatabaseHelper dbh = new DatabaseHelper(mActivity);
-                        SQLiteDatabase db = dbh.beginWriting();
+                        //DatabaseHelper dbh = new DatabaseHelper(mActivity);
+                        // SQLiteDatabase db = dbh.beginWriting();
 
                         // Create pattern for the scanner to search for in the input stream
-                        Pattern regex = Pattern.compile("\"([^\"]+)\",\"([^\"]+)\",([^,]+),([^\\]]+),\\d+");
-                        Scanner sc = new Scanner(data);
-                        sc.useDelimiter("\\[");
+                        //Pattern regex = Pattern.compile("\"([^\"]+)\",\"([^\"]+)\",([^,]+),([^\\]]+),\\d+");
+//                        Scanner sc = new Scanner(data);
+                        //sc.useDelimiter("\\[");
 
                         if (mProgressUpdate) {
-                            ((WelcomeActivity) mActivity).setProgressCurrent(i);
+                            ((WelcomeActivity) mActivity).setProgressCurrent(i+hubPageCount);
 //                            Log.d(LOG_TAG, "updating progress");
                         }
 
-                        while (sc.hasNext()) {
-                            String stopData = sc.next();
+                        BufferedReader stopContentReader = new BufferedReader(new InputStreamReader(content));
+                        StringBuilder stopContentStringBuilder = new StringBuilder();
+                        String stopContentInputStr;
+                        while((stopContentInputStr = stopContentReader.readLine())!=null)
+                            stopContentStringBuilder.append(stopContentInputStr);
 
-                            Matcher matcher = regex.matcher(stopData);
+                        JSONObject stopJsonObject = new JSONObject(stopContentStringBuilder.toString());
+                        JSONArray stopArray = stopJsonObject.getJSONArray("message");
 
-                            if (matcher.find()) {
-                                String stopId = matcher.group(1);
-                                String stopName = matcher.group(2);
-                                String stopLat = matcher.group(3);
-                                String stopLon = matcher.group(4);
+                        for(int j = 0; j<stopArray.length() ; j++){
+                            JSONArray tmpStop = stopArray.getJSONArray(j);
+                            Object stopId = tmpStop.get(0);
+                            Object stopName = tmpStop.get(1);
+                            Object stopLat = tmpStop.get(2);
+                            Object stopLon = tmpStop.get(3);
+                            Object hubId = tmpStop.get(4);
 
-                                // Enter stop data into database
-                                Stop s = new Stop(stopId, stopName, Double.valueOf(stopLat), Double.valueOf(stopLon));
-                                dbh.insertStop(db, s);
-                            } else {
-                                Log.d(LOG_TAG, "Stop Data: " + stopData);
-                            }
+                            if(stopId.toString().equals(5151))
+                                Log.d("hus test","founded 5151");
+
+                            Stop s = new Stop(stopId.toString(), stopName.toString(), Double.valueOf(stopLat.toString()),Double.valueOf(stopLon.toString()),hubId.toString());
+                            dbh.insertStop(db,s);
                         }
-
-                        dbh.endWriting(db);
-                        // Close the data stream
-                        data.close();
                     }
+                    dbh.endWriting(db);
+                    dbh.close();
 
                 } catch (IOException e) {
 //                    Log.d(LOG_TAG, "Task Execution Failed");
@@ -161,7 +233,8 @@ public class StopsRequest {
                     e.printStackTrace();
                 }
 
-                mListener.StopsResponse(null);
+                //mListener.StopsResponse(null);
+                mListener.HubsResponse(null, null);
             }
 
             return null;
