@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="edu.usc.imsc.sbus.activity.WatchedItemActivity">
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/material_deep_teal_500"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
+    <LinearLayout
+        android:id="@+id/title"
+        android:layout_width="fill_parent"
+        android:layout_height="60dip"
+        android:gravity="center_vertical"
+        android:layout_below="@id/toolbar"
+        android:background="@drawable/watch_title_border"
+        android:orientation="horizontal" >
+        <TextView
+            android:id="@+id/stopName"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:padding="10dip"
+            android:layout_gravity="center_vertical"
+            android:gravity="center_vertical"
+            android:layout_marginLeft="20dip"
+            android:textSize="15dip"
+            android:text="Stop Name"
+            android:layout_weight="1"
+
+            />
+        <TextView
+            android:id="@+id/route"
+            android:layout_height="wrap_content"
+            android:layout_width="0dp"
+            android:padding="10dip"
+            android:layout_gravity="center_vertical"
+            android:gravity="center_vertical"
+            android:layout_marginLeft="20dip"
+            android:textSize="15dip"
+            android:text="Route"
+            android:layout_weight="1"
+            />
+        <TextView
+            android:id="@+id/time"
+            android:layout_height="fill_parent"
+            android:layout_width="0dp"
+            android:padding="10dip"
+            android:layout_gravity="center_vertical"
+            android:gravity="center_vertical"
+            android:layout_marginLeft="20dip"
+            android:text="Arrive Time"
+            android:textSize="15dip"
+            android:layout_weight="1"
+            />
+    </LinearLayout>
+
+    <edu.usc.imsc.sbus.widget.DelSlideListView
+        android:id="@+id/itemList"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:cacheColorHint="#00000000"
+        android:drawSelectorOnTop="false"
+        android:fadingEdgeLength="0.0sp"
+        android:listSelector="@null"
+        android:layout_below="@id/title"
+        >
+
+    </edu.usc.imsc.sbus.widget.DelSlideListView>
+
+</RelativeLayout>

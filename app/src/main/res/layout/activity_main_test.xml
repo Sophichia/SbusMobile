@@ -1,0 +1,45 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/material_deep_teal_500"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
+
+    <LinearLayout
+        android:id="@+id/layout_map"
+        android:layout_width="match_parent"
+        android:layout_height="1200px"
+        android:layout_below="@+id/toolbar"
+        android:orientation="horizontal">
+
+        <org.osmdroid.views.MapView
+            android:id="@+id/map_test"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+
+            android:clickable="true" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_lv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/layout_map"
+        android:clickable="true"
+        android:orientation="vertical">
+
+        <ListView
+            android:id="@+id/lv_test"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_alignParentBottom="true"
+            android:clickable="true"></ListView>
+    </LinearLayout>
+</RelativeLayout>

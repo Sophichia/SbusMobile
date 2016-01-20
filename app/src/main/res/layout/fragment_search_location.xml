@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="edu.usc.imsc.sbus.activity.SearchResultsActivity">
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/material_deep_teal_500"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
+
+    <RelativeLayout
+        android:id="@+id/rl"
+        android:layout_below="@+id/toolbar"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content">
+        <AutoCompleteTextView
+            android:id="@+id/tvSearch"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:layout_marginRight="10dp"
+            android:paddingLeft="32dp"
+            android:textSize="20sp"
+            android:textColor="#ff000000"
+            android:hint="Enter A Location"
+            android:background="@drawable/search_frame"
+            />
+
+        <ImageView
+            android:id="@+id/ivDeleteText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:src="@drawable/delete"
+            android:layout_centerInParent="true"
+            android:paddingRight="20dp"
+            android:visibility="gone"
+            />
+
+    </RelativeLayout>
+
+    <TextView
+        android:layout_width="fill_parent"
+        android:layout_height="20dp"
+        android:id="@+id/tvvaccum"
+        android:layout_below="@+id/rl"
+        android:visibility="invisible"
+        />
+    <Button
+        android:layout_width="fill_parent"
+        android:layout_height="45dp"
+        android:id="@+id/btnSearch"
+        android:layout_below="@id/tvvaccum"
+        android:layout_centerHorizontal="true"
+        android:gravity="center"
+        android:text="Search"
+        android:textColor="#ffffffff"
+        android:textSize="20dip"
+        android:textStyle="bold"
+
+        />
+
+    <ListView
+        android:id="@+id/locationList"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/btnSearch"></ListView>
+
+</RelativeLayout>

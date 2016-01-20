@@ -8,4 +8,7 @@
     <string name="welcome">This is your personal public transportation assistant</string>
     <string name="title_activity_search_results">Search Results</string>
     <string name="search_hint">Enter A Place</string>
+    <string name="title">Sure to Delete the Watched Item?</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
 </resources>

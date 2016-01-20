@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="@dimen/group_item_height"
+    android:orientation="vertical">
+<LinearLayout
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    >
+    <TextView
+        android:id="@+id/routeItem"
+        style="@style/grouplist_item_textview"
+        android:layout_width="wrap_content"
+        android:layout_height="fill_parent"
+        android:layout_gravity="left"
+        android:gravity="center" />
+
+    <TextView
+        android:layout_width="25dp"
+        android:layout_height="fill_parent"
+        android:layout_gravity="center_horizontal"/>
+    <TextView
+        android:id="@+id/timeItem"
+        style="@style/grouplist_item_textview"
+        android:layout_width="wrap_content"
+        android:layout_height="fill_parent"
+        android:layout_gravity="right"
+        android:gravity="center" />
+</LinearLayout>
+
+</LinearLayout>

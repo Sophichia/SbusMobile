@@ -5,5 +5,28 @@
         <!-- Customize your theme here. -->
         <item name="colorPrimaryDark">@color/material_deep_teal_500</item>
     </style>
+    <style name="grouplist_item_textview">
+        <item name="android:textSize">18.0sp</item>
+        <item name="android:textColor">#ffffffff</item>
+    </style>
+
+    <style name="ActionSheetAnimation" parent="@android:style/Animation.Dialog">
+        <item name="android:windowEnterAnimation">@anim/push_up_in</item>
+        <item name="android:windowExitAnimation">@anim/push_up_out</item>
+    </style>
+    <style name="NotificationContent">
+        <item name="android:textColor">@android:color/darker_gray</item>
+    </style>
+    <style name="NotificationTitle">
+        <item name="android:textColor">@android:color/darker_gray</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="btn_custom_style">
+        <item name="android:layout_width">48dip</item>
+        <item name="android:layout_height">48dip</item>
+        <item name="android:layout_gravity">center|right</item>
+        <item name="android:background">@android:color/transparent</item>
+    </style>
 
 </resources>
